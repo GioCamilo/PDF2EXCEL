@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="pt-br">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Conversor DA</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-sRIl4kxILFvY47J16cr9ZwB07vP4J8+LH7qKQnuqkuIAvNWLzeN8tE5YBujZqJLB" crossorigin="anonymous">
+    <link rel="stylesheet" href="../static/main.css">
+
+    </head>
+  <body>
+
+    <div class="d-flex">
+    <nav class="sidebar d-flex flex-column flex-shrink-0 position-fixed">
+        <button class="toggle-btn" onclick="toggleSidebar()">
+            <i class="fas fa-chevron-left"></i>
+        </button>
+
+        <div class="p-4">
+            <h4 class="logo-text fw-bold mb-0">ConversorDA</h4>
+            <p class="text-muted small hide-on-collapse">Dashboard</p>
+        </div>
+
+        <div class="nav flex-column">
+            {% for nome in arquivos %}
+            <a href="{{ url_for('mostrar_doc', nome=nome) }}"
+                class="sidebar-link text-decoration-none p-3 {% if ativo == nome %}active{% endif %}">
+                <i class="fas fa-file-pdf me-2"></i>
+                <span class="hide-on-collapse">{{ nome }}</span>
+            </a>
+            {% endfor %}
+        </div>
+
+
+       
+    </nav>
+
+    <main class="main-content">
+        <div class="container-fluid">
+
+
+            <h2>Reviver</h2>
+            <p class="text-muted">Streamline your workflow with our intuitive dashboard.</p>
+
+
+            <!-- Botão vai buscar um documento -->
+             <!-- Input de arquivo escondido + form -->
+            <form action="/upload" method="post" enctype="multipart/form-data">
+            <input type="file" id="fileInput" name="files" accept="application/pdf" multiple style="display:none;" onchange="this.form.submit()">
+
+            </form>
+            <button type="button" class="btn btn-primary" onclick="document.getElementById('fileInput').click();">
+                Buscar Documento
+            </button>
+
+
+
+            <!-- tabela com as infos extraidas pelo flask-->
+
+
+
+            <div class="row">
+
+                {% if despesas %}
+                <h3>Discriminação das Despesas</h3>
+                <table class="table table-striped">
+                <thead class="table-dark text-center align-middle">
+                    <tr>
+                    <th>Descrição</th>
+                    <th>Valor</th>
+                    <th>Nf  Filha</th>
+                    <th>Nf Mãe</th>
+                    <th>CFOP</th>
+                    <th>Código Parceirro</th>
+                    <th>Processo</th>
+                    <th>Conta Contábio</th>
+                    <th>Valor Líquido</th>
+                    <th>ICMS %</th>
+                    <th>Valor Bruto</th>
+                    <th>Classificação</th> 
+                    <th>PIS</th>
+                    <th>COFINS</th>
+                    <th>ICMS</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for d in despesas %}
+                    <tr>
+                    <td>{{ d.Descrição }}</td>
+                    <td>{{ d.Valor }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+                </table>
+                {% endif %}
+
+
+
+        </div>
+    </main>
+
+    
+</div>
+
+        
+
+
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js" integrity="sha384-FKyoEForCGlyvwx9Hj09JcYn3nv7wiPVlz7YYwJrWVcXK/BmnVDxM+D2scQbITxI" crossorigin="anonymous"></script>
+    <script src="../static/main.js"></script>
+    </body>
+</html>
