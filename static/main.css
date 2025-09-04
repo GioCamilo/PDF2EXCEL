@@ -24,10 +24,12 @@ body {
     height: 100vh;
     background: linear-gradient(135deg, #1a1c2e 0%, #16181f 100%);
     transition: all 0.3s ease;
+    overflow: hidden;
 }
 
 .sidebar.collapsed {
     width: var(--sidebar-width-collapsed);
+    overflow: hidden;
 }
 
 .sidebar-link {
