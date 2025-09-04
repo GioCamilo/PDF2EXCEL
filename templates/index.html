@@ -56,22 +56,30 @@
                 Buscar Documento
             </button>
 
-
-
             <!-- tabela com as infos extraidas pelo flask-->
-
-
-
             <div class="row mt-4">
 
-                <div class="card"> 
-                    {% if dados %}
-                    <div class="doc-info card-body">
-                        <p>Importador/Exportador: {{ dados['Importador/Exportador']}}</p>
-                        <p>Referência: {{ dados['Referência']}}</p>
-                        <p style="color:green">Total não Trib: {{ dados['Total não Trib.'] }}</p>
+                <div class="col-md-6 mt-4 p-2 h-30">
+
+                    <div class="card"> 
+                        {% if dados %}
+                        <div class="doc-info card-body">
+                            <p>Importador/Exportador: {{ dados['Importador/Exportador']}}</p>
+                            <p>Referência: {{ dados['Referência']}}</p>
+                            <p style="color:green">Total não Trib: {{ dados['Total não Trib.'] }}</p>
+
+                            <p style="color:red">Total Liquido: {{ dados['Total Líquido'] }}</o>
+                        </div>
+                        {% endif %}
                     </div>
-                    {% endif %}
+                </div>
+                <div class="col-md-6 mt-4 p-2">
+                    <div class="card"> 
+                        <div class="card-body d-flex flex-column align-items-start text-center">
+                         
+
+                        </div>
+                    </div> 
                 </div>
 
 
