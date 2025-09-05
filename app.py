@@ -1,7 +1,9 @@
 import os
 import re
 import pdfplumber
-from flask import Flask, request, render_template, redirect, url_for, jsonify
+from openpyxl import Workbook
+import io
+from flask import Flask, request, render_template, redirect, url_for, jsonify, send_file
 from data.readcontrol import buscar_referencia_no_excel, ARQUIVO_CONTROLE
 from data.readdb import buscar_descricao_no_excel, ARQUIVO_BANCO
 from data.formatacao import formato_brasileiro
@@ -22,11 +24,6 @@ app.jinja_env.filters['moeda'] = formato_brasileiro
 app.jinja_env.filters['real'] = formato_brasileiro
 
 
-
-
-
-
-    
 
 
 def extrair_dados(pdf_path):
@@ -120,14 +117,7 @@ def extrair_dados(pdf_path):
 
     return dados, despesas
 
-                       
-
-                    
-
-
-
-    
-
+            
 
 
 # --- Rotas da Aplicação Flask ---
@@ -136,6 +126,8 @@ def index():
     return render_template('index.html', arquivos=list(resultados.keys()), nf_filhas=nf_filhas)
 
 
+nf_cache = {}  # dicionário em memória (doc -> {row -> value})
+
 @app.route("/salvar_nf_filha", methods=["POST"])
 def salvar_nf_filha():
     data = request.get_json()
@@ -143,11 +135,12 @@ def salvar_nf_filha():
     row = data["row"]
     value = data["value"]
 
-    if doc not in nf_filhas:
-        nf_filhas[doc] = {}
-    nf_filhas[doc][row] = value
+    if doc not in nf_cache:
+        nf_cache[doc] = {}
+    nf_cache[doc][row] = value
 
-    return jsonify(success=True)
+    return {"status": "ok"}
+
 
 
 @app.route('/upload', methods=['POST'])
@@ -168,23 +161,30 @@ def upload_file():
     return redirect(url_for("index"))
 
 
-@app.route('/doc/<nome>')
+@app.route("/doc/<nome>")
 def mostrar_doc(nome):
     if nome not in resultados:
         return "Documento não encontrado", 404
-    
+
+    dados = resultados[nome]["dados"]
     despesas = resultados[nome]["despesas"]
-    
+
+    # valores já salvos para este doc
+    nf_filhas_doc = nf_cache.get(nome, {})
+
     return render_template(
-        'index.html',
-        arquivos=list(resultados.keys()),
-        dados=resultados[nome]["dados"],
-        despesas=despesas,
-        ativo=nome,
-        nf_filhas=nf_filhas,
-       
+        "index.html", 
+        arquivos=list(resultados.keys()),  
+        dados=dados, 
+        despesas=despesas, 
+        ativo=nome, 
+        nf_filhas=nf_filhas_doc
     )
 
 
+
+
+
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(debug=True, host='0.0.0.0', port=5000)
+   

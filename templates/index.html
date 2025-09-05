@@ -56,36 +56,23 @@
                 Buscar Documento
             </button>
 
+            <button type="button" class="btn btn-danger" onclick="exportar();">
+                Exportar
+            </button>
+
             <!-- tabela com as infos extraidas pelo flask-->
             <div class="row mt-4">
-
-                <div class="col-md-6 mt-4 p-2">
+                <div class="col-md-12 mt-4 p-2">
                     <h6>Documento</h6>
                     <div class="card"> 
                         {% if dados %}
                         <div class="doc-info card-body">
                             <p>Importador/Exportador: {{ dados['Importador/Exportador']}}</p>
                             <p>Referência: {{ dados['Referência']}}</p>
-                            <p style="color:green">Total não Trib: {{ dados['Total não Trib.'] }}</p>
-
-                            <p style="color:red;font-weight:bold;">Total Liquido sem Frete: <span id="totalSemFrete" | br></span></p>
+                            <p style="color:green">Total não Trib: {{ dados['Total não Trib.'] }}</p>                  
                         </div>
                         {% endif %}
                     </div>
-                </div>
-
-                <!--Card de Totais -->
-                <div class="col-md-6 mt-4 p-2">
-                    <h6>Totais</h6>
-                    <div class="card p-10 d-flex flex-column justify-content-center" style="height:190px;">
-                        
-                        <div class="row p-2 text-center">
-                            <div class="col-md-4">
-                            
-                            </div>
-                        </div>
-                                                  
-                    </div> 
                 </div>
             </div>      
 
@@ -96,7 +83,7 @@
                 <div class="col-md-12 mt-4 p-2 d-flex justify-content-center">
 
                     <table class="table table-striped mt-4" id="tabela">
-                        <thead class="table-dark text-center align-middle w-10" style="font-size:13px;width:10px;">
+                        <thead class="table-primary text-center align-middle w-10" style="font-size:13px;width:10px;">
                     <tr style="font-size:13px;width:100%;">
                         <th>Descrição</th>
                         <th>Valor</th>
@@ -119,7 +106,7 @@
                     </thead>
                     <tbody class="text-center" style="font-size: 13px;">
                     {% for d in despesas %}
-                    <tr>
+                    
                         <td style="font-size:13px;">{{ d.Descrição }}</td> <!-- descrição do item -->
 
                         <td class="valor-comissaria">{{ d.valorInt | br }}</td> <!-- Pagas pela Comissária -->
@@ -129,7 +116,7 @@
                                    class="nf-filha-input form-control form-control-sm text-center" 
                                    data-doc="{{ ativo }}" 
                                    data-id="{{ loop.index0 }}" 
->
+                                   value="{{ nf_filhas.get(loop.index0|string, '') }}">
                         </td>
 
                         <td>{{ dados['NFMAE'] }}</td> <!-- Nf Mãe -->
@@ -145,7 +132,7 @@
                         <td> {{ dados['CONTABIL'] }}</td> <!-- Conta Contábil -->
 
                         {% if d.Descrição == "FRETE INTERNACIONAL" %}
-                        <td class="text-danger">{{ "0,00" }}</td>  <!-- Valor Liquido -->
+                        <td class="table-danger text-red">{{ "0,00" }}</td>  <!-- Valor Liquido -->
                         {% else %}
                         <td>{{ d.Valor }}</td>
                         {% endif %}
@@ -154,7 +141,9 @@
                         <td>{{ dados['ICMS%'] }}</td> <!-- ICMS % -->
 
 
-                        {% if dados['ICMS%'] == "18.00%" %}
+                        {% if d.descrição == "FRETE INTERNACIONAL" %}
+                        <td>{{ "0,00" }}</td>
+                        {% elif dados['ICMS%'] == "18.00%" %}
                         <td>{{ (d.valorInt * 0.18) | br }}</td>
                         {% else %}
                         <td>{{ "0,00" }}</td>
@@ -163,36 +152,45 @@
                         <td>{{ d.Classificação }}</td> <!-- Classificação -->
 
                         {% if d.Classificação == "COM CRÉDITO" %}
-                        <td>{{ (d.valorInt * 0.0175) | br }}</td> <!-- PIS -->
-                        <td>{{ (d.valorInt * 0.076) | br }}</td> {% else %}
+                        <td class="table-success">{{ (d.valorInt * 0.0175) | br }}</td> <!-- PIS -->
+                        <td class="table-success">{{ (d.valorInt * 0.076) | br }}</td> {% else %} <!-- Confins -->
                         <td>{{ "0,00" }}</td> <td>{{ "0,00" }}</td> {% endif %}
 
-                        <td>{{ (d.valorInt * 0.18) | br }}</td>
+                       
+                        {% if d.descrição == "FRETE INTERNACIONAL" %}
+                        <td>{{ "0,00" }}</td> {% elif dados['ICMS%'] == "18.00%" %}
+                        <td>{{ (d.valorInt * 0.18) | br }}</td> {% else %}
+                        <td>{{ "0,00" }}</td>
+                        {% endif %}
+
+                        <td class="emissao-nfe text-danger">
+                            {% if nf_filhas.get(loop.index0|string, '') %}
+                              COM EMISSÃO
+                            {% else %}
+                              SEM EMISSÃO
+                            {% endif %}
+                        </td>
                                                 
                     </tr>
                     {% endfor %}
                     </tbody>
-                    <tfoot>
-                        <tr>
-                            <td colspan="9"></td>
-                            <td>Total Líquido</td>
-                            <td id="totalLiquido"></td>
-                            <td>Total Bruto</td>
-                            <td id="totalBruto"></td>
-                            <td id="totalPis"></td>
-                            <td id="totalCofins"></td>
-                            <td id="totalIcms"></td>
-                            <td></td>
-                        </tr>
-                        <tr>
-                            <td colspan="1"></td>
-                            <td colspan="2">Total Geral (Exceto Frete)</td>
-                            <td id="totalValorNaoFrete" colspan="13"></td>
-                        </tr>
-                    </tfoot>
-
                     </table>
+
+                    <!-- FIM TABELA -->
                     {% endif %}
+                </div>
+
+                <div class="row mt-4 p-3">
+                    <div class="col-md-12">
+                        <div class="card"> 
+                            <div class="card-body">
+                                <p>Total sem Frete: <span id="totalSemFrete"></span></p>
+                                <p>Total Liquido: <span id="totalLiquido"></span></p>
+                                <p class="text-danger fw-bold">Check: <span id="formulaCheck"></span></p>
+                            </div>
+                        </div>
+                    </div>
+                    
                 </div>
 
 
@@ -207,6 +205,8 @@
 
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js" integrity="sha384-FKyoEForCGlyvwx9Hj09JcYn3nv7wiPVlz7YYwJrWVcXK/BmnVDxM+D2scQbITxI" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
     <script src="../static/main.js"></script>
+    
     </body>
 </html>
