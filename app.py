@@ -1,12 +1,14 @@
 import os
 import re
 import pdfplumber
-from openpyxl import Workbook
 import io
-from flask import Flask, request, render_template, redirect, url_for, jsonify, send_file
+from flask import Flask, request, render_template, redirect, url_for
+
+from data.export import exportar_excel
 from data.readcontrol import buscar_referencia_no_excel, ARQUIVO_CONTROLE
 from data.readdb import buscar_descricao_no_excel, ARQUIVO_BANCO
 from data.formatacao import formato_brasileiro
+
 
 app = Flask(__name__)
 
@@ -24,10 +26,8 @@ app.jinja_env.filters['moeda'] = formato_brasileiro
 app.jinja_env.filters['real'] = formato_brasileiro
 
 
-
-
 def extrair_dados(pdf_path):
-    
+
     dados = {}
     despesas = []
     soma_valores_liquidos = 0.00
@@ -39,39 +39,86 @@ def extrair_dados(pdf_path):
                 if page.extract_text():
                     text += page.extract_text() + "\n"
 
-        # --- Regex com validação ---
-        ref_match = re.search(r"Referência:\s*(MRE\d+)", text)
-        dados["Referência"] = ref_match.group(1).strip() if ref_match else "Não Encontrado"
+        # --- Regex modificado para capturar múltiplas referências ---
+        ref_match = re.search(r"Referência:\s*([^;\n]+(?:;\s*[^;\n]+)*)", text)
+        if ref_match:
+            referencias_texto = ref_match.group(1).strip()
+            # Separa as referências por ponto e vírgula
+            referencias_lista = [ref.strip()
+                                 for ref in referencias_texto.split(';')]
+            dados["Referências"] = referencias_lista
+            # Mantém compatibilidade
+            dados["Referência"] = referencias_lista[0]
+        else:
+            dados["Referências"] = ["Não Encontrado"]
+            dados["Referência"] = "Não Encontrado"
 
         imp_match = re.search(r"Importador/Exportador:\s*([^;\n]+)", text)
-        dados["Importador/Exportador"] = imp_match.group(1).strip() if imp_match else "Não Encontrado"
+        dados["Importador/Exportador"] = imp_match.group(
+            1).strip() if imp_match else "Não Encontrado"
 
         total_match = re.search(r"Total não Trib.*: ([\d.,]+)", text)
         dados["Total não Trib."] = total_match.group(1) if total_match else "0"
 
-        # --- Busca no Excel ---
-        resultado = buscar_referencia_no_excel(dados["Referência"], ARQUIVO_CONTROLE)
-        if resultado:
-            (valor_icms_excel, valor_nfmae_excel, valor_cfop_excel,
-             valor_n_doc_excel, valor_contabil_excel, valor_parceiro_excel) = resultado
-        else:
-            valor_icms_excel = valor_nfmae_excel = valor_cfop_excel = None
-            valor_n_doc_excel = valor_contabil_excel = valor_parceiro_excel = None
+        # --- Busca no Excel para cada referência ---
+        dados_referencias = []
 
-        if valor_icms_excel is not None and isinstance(valor_icms_excel, (int, float)):
-            dados["ICMS%"] = f"{valor_icms_excel * 100:.2f}%"
+        for referencia in dados["Referências"]:
+            if referencia != "Não Encontrado":
+                resultado = buscar_referencia_no_excel(
+                    referencia, ARQUIVO_CONTROLE)
+                if resultado:
+                    (valor_icms_excel, valor_nfmae_excel, valor_cfop_excel,
+                     valor_n_doc_excel, valor_contabil_excel, valor_parceiro_excel) = resultado
+
+                    icms_formatado = f"{valor_icms_excel * 100:.2f}%" if valor_icms_excel is not None and isinstance(
+                        valor_icms_excel, (int, float)) else "Não Encontrado"
+
+                    dados_ref = {
+                        "Referência": referencia,
+                        "ICMS%": icms_formatado,
+                        "NFMAE": valor_nfmae_excel if valor_nfmae_excel is not None else "Não Encontrado",
+                        "CFOP": valor_cfop_excel if valor_cfop_excel is not None else "Não Encontrado",
+                        "Nº DOC": valor_n_doc_excel if valor_n_doc_excel is not None else "Não Encontrado",
+                        "CONTABIL": valor_contabil_excel if valor_contabil_excel is not None else "Não Encontrado",
+                        "PARCEIRO": valor_parceiro_excel if valor_parceiro_excel is not None else "Não Encontrado"
+                    }
+                    dados_referencias.append(dados_ref)
+                else:
+                    # Se não encontrou dados para esta referência
+                    dados_ref = {
+                        "Referência": referencia,
+                        "ICMS%": "Não Encontrado",
+                        "NFMAE": "Não Encontrado",
+                        "CFOP": "Não Encontrado",
+                        "Nº DOC": "Não Encontrado",
+                        "CONTABIL": "Não Encontrado",
+                        "PARCEIRO": "Não Encontrado"
+                    }
+                    dados_referencias.append(dados_ref)
+
+        dados["DadosReferencias"] = dados_referencias
+
+        # Mantém os campos originais para compatibilidade (usando a primeira referência)
+        if dados_referencias:
+            primeira_ref = dados_referencias[0]
+            dados["ICMS%"] = primeira_ref["ICMS%"]
+            dados["NFMAE"] = primeira_ref["NFMAE"]
+            dados["CFOP"] = primeira_ref["CFOP"]
+            dados["Nº DOC"] = primeira_ref["Nº DOC"]
+            dados["CONTABIL"] = primeira_ref["CONTABIL"]
+            dados["PARCEIRO"] = primeira_ref["PARCEIRO"]
         else:
             dados["ICMS%"] = "Não Encontrado"
-
-        dados["NFMAE"] = valor_nfmae_excel if valor_nfmae_excel is not None else "Não Encontrado"
-        dados["CFOP"] = valor_cfop_excel if valor_cfop_excel is not None else "Não Encontrado"
-        dados["Nº DOC"] = valor_n_doc_excel if valor_n_doc_excel is not None else "Não Encontrado"
-        dados["CONTABIL"] = valor_contabil_excel if valor_contabil_excel is not None else "Não Encontrado"
-        dados["PARCEIRO"] = valor_parceiro_excel if valor_parceiro_excel is not None else "Não Encontrado"
-        
+            dados["NFMAE"] = "Não Encontrado"
+            dados["CFOP"] = "Não Encontrado"
+            dados["Nº DOC"] = "Não Encontrado"
+            dados["CONTABIL"] = "Não Encontrado"
+            dados["PARCEIRO"] = "Não Encontrado"
 
         # --- Extrai tabela de despesas ---
-        bloco_despesas = re.search(r"Discriminação das despesas.*?([\s\S]*?)Total não Trib", text)
+        bloco_despesas = re.search(
+            r"Discriminação das despesas.*?([\s\S]*?)Total não Trib", text)
         if bloco_despesas:
             linhas = bloco_despesas.group(1).strip().split("\n")
             for linha in linhas:
@@ -84,14 +131,16 @@ def extrair_dados(pdf_path):
 
                     valor_limpo = valor_str.replace("R$", "").strip()
                     if "," in valor_limpo:
-                        valor_para_calculo = valor_limpo.replace(".", "").replace(",", ".")
+                        valor_para_calculo = valor_limpo.replace(
+                            ".", "").replace(",", ".")
                     else:
                         valor_para_calculo = valor_limpo
 
                     try:
                         valor_float = float(valor_para_calculo)
 
-                        classificacao_excel = buscar_descricao_no_excel(descricao, ARQUIVO_BANCO)
+                        classificacao_excel = buscar_descricao_no_excel(
+                            descricao, ARQUIVO_BANCO)
                         # soma aqui 👇
                         soma_valores_liquidos += valor_float
 
@@ -104,12 +153,8 @@ def extrair_dados(pdf_path):
                             "Total Liquido": soma_valores_liquidos
                         })
 
-                        
-
                     except ValueError:
                         continue
-
-       
 
     except Exception as e:
         print(f"Erro ao extrair dados do PDF {pdf_path}: {e}")
@@ -117,7 +162,10 @@ def extrair_dados(pdf_path):
 
     return dados, despesas
 
-            
+
+@app.route("/exportar")
+def exportar():
+    return exportar_excel(resultados, nf_cache)
 
 
 # --- Rotas da Aplicação Flask ---
@@ -127,6 +175,7 @@ def index():
 
 
 nf_cache = {}  # dicionário em memória (doc -> {row -> value})
+
 
 @app.route("/salvar_nf_filha", methods=["POST"])
 def salvar_nf_filha():
@@ -141,6 +190,14 @@ def salvar_nf_filha():
 
     return {"status": "ok"}
 
+
+@app.route("/remover_doc", methods=["POST"])
+def remover_doc():
+    data = request.get_json()
+    nome = data["nome"]
+    if nome in resultados:
+        del resultados[nome]
+    return {"status": "ok"}
 
 
 @app.route('/upload', methods=['POST'])
@@ -173,18 +230,14 @@ def mostrar_doc(nome):
     nf_filhas_doc = nf_cache.get(nome, {})
 
     return render_template(
-        "index.html", 
-        arquivos=list(resultados.keys()),  
-        dados=dados, 
-        despesas=despesas, 
-        ativo=nome, 
+        "index.html",
+        arquivos=list(resultados.keys()),
+        dados=dados,
+        despesas=despesas,
+        ativo=nome,
         nf_filhas=nf_filhas_doc
     )
 
 
-
-
-
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5000)
-   

@@ -6,6 +6,45 @@ function toggleSidebar() {
     sidebar.classList.toggle('collapsed');
 }
 
+
+/** 
+ * Exportar Tabela e infos para Excel 
+ 
+ */
+function exportar() {
+    window.location.href = '/exportar';
+}
+
+
+/**
+ * Remover Doc da lista 
+ */
+
+function removerDoc(nome) {
+    fetch("/remover_doc", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ nome: nome })
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error(`Erro HTTP: ${response.status}`);
+        }
+        return response.json();
+    })
+    .then(data => {
+        console.log("Documento removido com sucesso:", data);
+        // Atualize a lista de documentos na sidebar
+        location.reload();
+    })
+    .catch(error => {
+        console.error("Erro ao remover documento:", error);
+        alert("Erro ao remover. Tente novamente.");
+    });
+}
+
 /**
  * Executa o script apenas depois que a página HTML for totalmente carregada
  */

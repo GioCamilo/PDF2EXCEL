@@ -7,6 +7,7 @@ ARQUIVO_CONTROLE = 'documentos/controle.xlsx'
 # Cache em memória para as referências
 _excel_cache = {}
 
+
 def carregar_excel_controle():
     """
     Carrega os dados do Excel de controle em memória (cache).

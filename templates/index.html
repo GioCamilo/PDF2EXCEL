@@ -14,26 +14,32 @@
   <body>
 
     <div class="d-flex">
+         
     <nav class="sidebar d-flex flex-column flex-shrink-0 position-fixed">
+       
         <button class="toggle-btn" onclick="toggleSidebar()">
-            <i class="fas fa-chevron-left"></i>
-        </button>
+            <i class="text-blue fas fa-chevron-left"></i>
+        </button> 
 
         <div class="p-4">
             <h4 class="logo-text fw-bold mb-0">ConversorDA</h4>
-            <p class="text-muted small hide-on-collapse">Dashboard</p>
+            <p class="text-muted small hide-on-collapse">Dashboard</p> 
         </div>
 
-        <div class="nav flex-column">
-            {% for nome in arquivos %}
-            <a href="{{ url_for('mostrar_doc', nome=nome) }}"
-                class="sidebar-link text-decoration-none p-3 {% if ativo == nome %}active{% endif %}">
-                <i class="fas fa-file-pdf me-2"></i>
-                <span class="hide-on-collapse">{{ nome }}</span>
-            </a>
-            {% endfor %}
+        
+        <div class="container-sidebar">
+            <div class="nav flex-column">
+                {% for nome in arquivos %}
+                <a href="{{ url_for('mostrar_doc', nome=nome) }}"
+                    class="sidebar-link text-decoration-none p-3 {% if ativo == nome %}active{% endif %}">
+                    <i class="fas fa-file-pdf me-2"></i>
+                    <span class="hide-on-collapse">{{ nome }}</span>
+                    <button id="remove-doc" class="btn btn-danger btn-sm float-end" onclick="removerDoc('{{ nome }}')">X</button>
+                    
+                </a>
+                {% endfor %}
+            </div>
         </div>
-
 
        
     </nav>
